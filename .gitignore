@@ -1,0 +1,22 @@
+# System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor Directories
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+npm-debug.log*
+
+# Optional: Ignore generated icons if you want to regenerate them
+# icons/*.png
+
+# Temporary files
+*.tmp
+*.temp
+*~

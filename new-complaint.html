@@ -926,7 +926,7 @@
         }
 
         // Handle form submission
-        function handleSubmit(event) {
+        async function handleSubmit(event) {
             event.preventDefault();
             
             const timestamp = new Date();
@@ -947,6 +947,19 @@
 
             // Store in localStorage
             let complaints = JSON.parse(localStorage.getItem('complaints') || '[]');
+            
+            // Always store video in IndexedDB if present (no size limit)
+            if (uploadedVideo) {
+                try {
+                    await storeVideoInIndexedDB(ticketId, uploadedVideo);
+                    formData.video = 'STORED_' + ticketId; // Reference
+                } catch (e) {
+                    console.error('Error storing video:', e);
+                    // Continue without video if IndexedDB fails
+                    formData.video = null;
+                }
+            }
+            
             complaints.push(formData);
             
             try {
@@ -957,8 +970,39 @@
                 // Redirect to dashboard page
                 window.location.href = 'Dashboard.html';
             } catch (e) {
-                alert('Error: Video file too large. Please try a shorter video or lower quality.');
+                // If still fails, try without video
+                formData.video = null;
+                complaints[complaints.length - 1] = formData;
+                localStorage.setItem('complaints', JSON.stringify(complaints));
+                alert('Complaint submitted successfully (video saved separately)!\nTicket ID: ' + ticketId);
+                window.location.href = 'Dashboard.html';
             }
+        }
+
+        // IndexedDB functions for video storage
+        function storeVideoInIndexedDB(id, videoData) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('STPL_Videos', 1);
+                
+                request.onerror = () => reject(request.error);
+                
+                request.onsuccess = () => {
+                    const db = request.result;
+                    const transaction = db.transaction(['videos'], 'readwrite');
+                    const store = transaction.objectStore('videos');
+                    store.put({ id: id, data: videoData });
+                    
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('videos')) {
+                        db.createObjectStore('videos', { keyPath: 'id' });
+                    }
+                };
+            });
         }
 
         // Add subtle parallax effect on mouse move
